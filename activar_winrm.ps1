@@ -35,7 +35,7 @@
 param(
     [int]   $Port               = 5985,
     [bool]  $BasicAuth          = $true,
-    [bool]  $AllowUnencrypted   = $true,
+    [bool]  $AllowUnencrypted   = $false,
     [switch]$EnableHTTPS,
     [int]   $HTTPSPort          = 5986,
     [switch]$Disable,
@@ -137,6 +137,12 @@ function Enable-WinRM {
         Write-Message "[SKIP] Listener HTTP ya existe en puerto $($state.HTTPListenerPort)." -Color DarkYellow
     }
 
+    if ($BasicAuth -and -not $AllowUnencrypted) {
+        Write-Warn "[WARN] BasicAuth=$true + AllowUnencrypted=$false — Las credenciales viajan cifradas dentro del canal HTTP. Se recomienda usar HTTPS en producción."
+    }
+    if ($BasicAuth -and $AllowUnencrypted) {
+        Write-Warn "[WARN] BasicAuth=$true + AllowUnencrypted=$true — ¡Las credenciales viajan en texto plano! Se recomienda AllowUnencrypted=$false o habilitar HTTPS."
+    }
     Write-Info "[INFO] Habilitando autenticación Basic..."
     if ($PSVersionTable.PSVersion.Major -ge 5) {
         Set-Item WSMan:\localhost\Service\Auth\Basic $BasicAuth -Force
