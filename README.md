@@ -3,7 +3,7 @@
 PowerShell script to quickly enable or disable WinRM on Windows machines, preparing them for Ansible or other remote management tools.
 
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![CI](https://github.com/tu-usuario/winrm-fastconfig/actions/workflows/ci.yml/badge.svg)](https://github.com/tu-usuario/winrm-fastconfig/actions/workflows/ci.yml)
+[![CI](https://github.com/bi0punk/winrm-fastconfig/actions/workflows/ci.yml/badge.svg)](https://github.com/bi0punk/winrm-fastconfig/actions/workflows/ci.yml)
 
 ## Tabla de Contenidos
 
@@ -51,7 +51,7 @@ winrm-fastconfig/
 ## Instalación
 
 ```powershell
-git clone https://github.com/tu-usuario/winrm-fastconfig.git
+git clone https://github.com/bi0punk/winrm-fastconfig.git
 cd winrm-fastconfig
 ```
 
