@@ -1,52 +1,70 @@
 # winrm-fastconfig
 
-PowerShell script to quickly enable or disable WinRM on Windows machines, preparing them for Ansible or other remote management tools.
+Script de PowerShell para habilitar o deshabilitar WinRM en máquinas Windows de forma rápida, preparándolas para Ansible u otras herramientas de administración remota.
 
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![CI](https://github.com/bi0punk/winrm-fastconfig/actions/workflows/ci.yml/badge.svg)](https://github.com/bi0punk/winrm-fastconfig/actions/workflows/ci.yml)
 
-## Tabla de Contenidos
+## Contenido
 
 - [Características](#características)
-- [Stack](#stack)
 - [Arquitectura](#arquitectura)
-- [Requisitos](#requisitos)
+- [Stack](#stack)
+- [Estructura del repositorio](#estructura-del-repositorio)
 - [Instalación](#instalación)
 - [Uso](#uso)
-- [Tests](#tests)
 - [Configuración](#configuración)
-- [CI](#ci)
-- [Limitaciones / Roadmap](#limitaciones--roadmap)
+- [Tests / CI](#tests--ci)
+- [Roadmap](#roadmap)
 - [Licencia](#licencia)
 
 ## Características
 
 - Activación de WinRM con un solo comando
 - Puerto HTTP configurable (default 5985)
-- Soporte para HTTPS con certificado auto-firmado
+- Soporte para HTTPS con certificado auto-firmado (puerto 5986)
 - Creación automática de reglas de firewall
+- Autenticación Basic y AllowUnencrypted configurables
 - Modo rollback completo (`-Disable`)
 - Idempotente (skip si ya configurado, `-Force` para re-aplicar)
 
+## Arquitectura
+
+```mermaid
+flowchart TD
+  CLI[activar_winrm.ps1] --> DEC{¿-Disable?}
+  DEC -->|sí + -Force| DI[Disable-WinRM: revierte Basic/AllowUnencrypted, borra listeners, firewall y certificados]
+  DEC -->|sí sin -Force| EX1[warning + exit 1]
+  DEC -->|no| ST[Get-WinRMState]
+  ST -->|ya configurado y sin -Force| SKIP[SKIP y estado actual]
+  ST -->|configurar| EN[Enable-WinRM]
+  EN --> SVC[Servicio WinRM: start/restart]
+  EN --> PSREM[Enable-PSRemoting: listener HTTP]
+  EN --> BAS[Set-Item Auth Basic]
+  EN --> UN[Set-Item AllowUnencrypted]
+  EN --> FW[New-NetFirewallRule HTTP y HTTPS]
+  EN -->|opcional -EnableHTTPS| CERT[Nuevo certificado auto-firmado + listener HTTPS]
+  EN --> FIN[Estado final: servicio + listeners]
+```
+
 ## Stack
 
-- PowerShell 5.1+
+- PowerShell 5.1+ (requiere `#requires -RunAsAdministrator`)
+- PSScriptAnalyzer (lint en CI)
 
-## Arquitectura
+## Estructura del repositorio
 
 ```
 winrm-fastconfig/
-├── activar_winrm.ps1   # Script principal
-├── tests/
-├── .env.example
-├── .github/workflows/ci.yml
+├── activar_winrm.ps1   # Script principal (enable/disable WinRM)
+├── tests/              # (sin tests Pester aún)
+├── .env.example        # Variables de ejemplo para conexión (no usadas por el script)
+├── .github/workflows/
+│   └── ci.yml          # PSScriptAnalyzer
+├── .gitignore
+├── LICENSE
 └── README.md
 ```
-
-## Requisitos
-
-- Windows 10/11 o Windows Server 2016+
-- PowerShell ejecutado como Administrador
 
 ## Instalación
 
@@ -55,6 +73,10 @@ git clone https://github.com/bi0punk/winrm-fastconfig.git
 cd winrm-fastconfig
 ```
 
+Requisitos:
+- Windows 10/11 o Windows Server 2016+
+- PowerShell ejecutado como Administrador
+
 ## Uso
 
 ```powershell
@@ -62,38 +84,40 @@ cd winrm-fastconfig
 .\activar_winrm.ps1
 
 # Habilitar con HTTPS (certificado auto-firmado)
-.\activar_winrm.ps1 -EnableHttps
+.\activar_winrm.ps1 -EnableHTTPS
 
 # Habilitar con puerto personalizado
 .\activar_winrm.ps1 -Port 5986
 
 # Deshabilitar / rollback
-.\activar_winrm.ps1 -Disable
-```
-
-## Tests
-
-```powershell
-# PSScriptAnalyzer (lint)
-Install-Module -Name PSScriptAnalyzer -Force
-Invoke-ScriptAnalyzer -Path . -Recurse
+.\activar_winrm.ps1 -Disable -Force
 ```
 
 ## Configuración
 
-| Parámetro      | Default | Descripción                           |
-|----------------|---------|---------------------------------------|
-| `-Port`        | 5985    | Puerto WinRM                          |
-| `-EnableHttps` | false   | Configurar HTTPS con certificado      |
-| `-Disable`     | false   | Deshabilitar WinRM y limpiar reglas   |
-| `-Force`       | false   | Re-aplicar configuración existente    |
+Parámetros (definidos en `activar_winrm.ps1`):
 
-## CI
+| Parámetro        | Default | Descripción                              |
+|------------------|---------|------------------------------------------|
+| `-Port`          | 5985    | Puerto HTTP para WinRM                   |
+| `-BasicAuth`     | `$true` | Habilita autenticación Basic             |
+| `-AllowUnencrypted` | `$false` | Permite tráfico sin cifrar (LAN)     |
+| `-EnableHTTPS`   | off     | Crea listener HTTPS con certificado auto-firmado |
+| `-HTTPSPort`     | 5986    | Puerto HTTPS                             |
+| `-Disable`       | off     | Revierte toda la configuración (rollback) |
+| `-Force`         | off     | Re-aplica config/confirma el rollback    |
+| `-Quiet`         | off     | Output mínimo (solo errores)             |
 
-GitHub Actions ejecuta PSScriptAnalyzer lint en Windows latest en cada push y PR.
+`-Disable` requiere `-Force` para confirmar el rollback.
 
-## Limitaciones / Roadmap
+## Tests / CI
 
+Github Actions (`.github/workflows/ci.yml`) instala PSScriptAnalyzer y ejecuta `Invoke-ScriptAnalyzer -Path . -Recurse -EnableExit` en `windows-latest` en cada push/PR.
+
+## Roadmap
+
+- [x] Enable/disable WinRM con reglas de firewall
+- [x] HTTPS con certificado auto-firmado
 - [ ] Soporte para configuraciones de Kerberos
 - [ ] Integración con DSC (Desired State Configuration)
 - [ ] Tests con Pester
