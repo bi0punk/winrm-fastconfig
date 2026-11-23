@@ -57,7 +57,6 @@ flowchart TD
 ```
 winrm-fastconfig/
 ├── activar_winrm.ps1   # Script principal (enable/disable WinRM)
-├── tests/              # (sin tests Pester aún)
 ├── .env.example        # Variables de ejemplo para conexión (no usadas por el script)
 ├── .github/workflows/
 │   └── ci.yml          # PSScriptAnalyzer
